@@ -4,31 +4,17 @@ FROM python:3.9.13-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for audio processing and health checks
+# Install system dependencies - minimal for web app
 RUN apt-get update && apt-get install -y \
     build-essential \
-    portaudio19-dev \
-    libasound2-dev \
-    libsndfile1 \
-    pulseaudio \
-    pulseaudio-utils \
-    alsa-utils \
-    alsa-base \
-    libasound2-plugins \
     curl \
-    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security and add to audio group
-RUN useradd --create-home --shell /bin/bash --groups audio app && chown -R app:app /app
+# Create a non-root user for security
+RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 
 # Switch to non-root user
 USER app
-
-# Set up audio environment variables
-ENV PULSE_RUNTIME_PATH=/tmp/pulse-socket
-ENV ALSA_CARD=0
-ENV PYGAME_HIDE_SUPPORT_PROMPT=1
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -37,14 +23,13 @@ ENV STREAMLIT_SERVER_PORT=8501
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 
 # Copy requirements first for better caching
-COPY --chown=app:app requirements.txt .
+COPY --chown=app:app requirements-docker.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Install Python dependencies (Docker-optimized)
+RUN pip install --no-cache-dir --user -r requirements-docker.txt
 
 # Copy application files
-COPY --chown=app:app Major_working_code_v3_browser_audio.py .
-COPY --chown=app:app Major_working_code_v3.py .
+COPY --chown=app:app Major_working_code_v3_docker.py .
 COPY --chown=app:app healthcheck.sh .
 
 # Make health check script executable
@@ -69,5 +54,5 @@ RUN echo '[server]' > /home/app/.streamlit/config.toml && \
     echo 'enableCORS = false' >> /home/app/.streamlit/config.toml && \
     echo 'enableXsrfProtection = false' >> /home/app/.streamlit/config.toml
 
-# Command to run the browser-based audio application (Docker-optimized)
-CMD ["python", "-m", "streamlit", "run", "Major_working_code_v3_browser_audio.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+# Command to run the Docker-optimized application
+CMD ["python", "-m", "streamlit", "run", "Major_working_code_v3_docker.py", "--server.address", "0.0.0.0", "--server.port", "8501"]

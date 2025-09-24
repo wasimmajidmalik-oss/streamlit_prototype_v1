@@ -1,0 +1,9 @@
+# Docker-optimized dependencies
+streamlit>=1.49.1
+openai>=1.108.1
+python-dotenv>=1.1.1
+numpy>=2.0.2
+
+# Audio libraries - simplified for Docker
+# Note: Audio functionality will be handled by browser APIs
+# sounddevice, pygame, etc. are not needed in containerized environment
