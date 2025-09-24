@@ -190,7 +190,8 @@ show_help() {
 
 # Main function
 main() {
-    echo "=== AI Voice Chatbot - Docker Deployment ==="
+    echo "=== AI Voice Chatbot - Docker Deployment (Browser Audio) ==="
+    echo "🎙️ This version uses browser-based audio for full Docker compatibility"
     echo
     
     # Get command (default to start)

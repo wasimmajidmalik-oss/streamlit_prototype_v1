@@ -10,6 +10,7 @@ A sophisticated voice-enabled chatbot application built with Streamlit and power
 - **🔊 Text-to-Speech**: Natural voice responses using OpenAI TTS
 - **💬 Interactive Chat**: Both voice and text input modes
 - **🎛️ Advanced Configuration**: Customizable AI parameters and voice settings
+- **🐳 Docker Ready**: Browser-based audio version for perfect containerization
 
 ### 🚀 Advanced Features
 - **🔄 Continuous Conversation**: Natural conversation flow with intelligent conclusion detection
@@ -95,6 +96,12 @@ You can run this application either locally with Python or using Docker for easi
    - Open http://localhost:8501 in your browser
 
 📖 **See [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) for detailed Docker deployment instructions**
+
+   **🎯 Docker runs the browser-optimized version** (`Major_working_code_v3_browser_audio.py`) which:
+   - ✅ **Full voice chat functionality** using browser APIs
+   - ✅ **Works on all platforms** (Windows, Mac, Linux)
+   - ✅ **No audio device setup required**
+   - ✅ **Perfect for cloud deployment**
 
 ### 🐍 Local Python Installation
 

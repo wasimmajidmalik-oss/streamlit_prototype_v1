@@ -8,7 +8,8 @@ set APP_NAME=voice-chatbot
 set PORT=8501
 set COMPOSE_FILE=docker-compose.yml
 
-echo === AI Voice Chatbot - Docker Deployment ===
+echo === AI Voice Chatbot - Docker Deployment (Browser Audio) ===
+echo [INFO] This version uses browser-based audio for full Docker compatibility
 echo.
 
 REM Get command (default to start)

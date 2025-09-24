@@ -167,12 +167,24 @@ Use the provided docker-compose.yml as a template for ECS task definitions.
    docker run -p 8502:8501 --env-file .env voice-chatbot
    ```
 
-3. **Audio Issues in Container**
+3. **🎉 FULL AUDIO SUPPORT IN DOCKER!**
    
-   The container runs the web interface only. Audio processing happens in the browser, so:
-   - Ensure your browser has microphone permissions
+   **✅ Complete voice chatbot functionality is available in Docker:**
+   - **🎤 Voice Input**: Browser-based microphone recording works perfectly
+   - **🔊 Voice Output**: AI responses play automatically through browser
+   - **🌐 Cross-Platform**: Works on Windows, Mac, Linux Docker hosts
+   - **🛡️ No Special Setup**: No system audio device configuration needed
+   
+   **Browser Requirements:**
+   - Modern browser (Chrome, Firefox, Safari, Edge)
+   - Grant microphone permissions when prompted
    - Use HTTPS in production for microphone access
-   - Test with different browsers if issues persist
+   
+   **Available Features:**
+   - Real-time voice conversation with OpenAI models
+   - Speech-to-text using Whisper API
+   - Natural text-to-speech responses
+   - Fallback text input/output mode
 
 4. **OpenAI API Errors**
    - Verify your API key is correct

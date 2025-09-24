@@ -346,9 +346,21 @@ class SimpleChatbot:
         self.CHANNELS = 1
         self.DTYPE = np.int16
         
-        # Initialize pygame for audio playback
-        pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
-        pygame.mixer.init()
+        # Initialize pygame for audio playback with error handling for Docker
+        self.pygame_available = False
+        try:
+            pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
+            pygame.mixer.init()
+            self.pygame_available = True
+        except pygame.error as e:
+            if "No such file or directory" in str(e) or "ALSA" in str(e):
+                # Running in Docker or headless environment - audio playback disabled
+                st.warning("🔇 Audio playback disabled (running in headless/Docker environment)")
+                st.info("💡 TTS audio will be generated but not played. Use browser's built-in audio controls if needed.")
+            else:
+                st.error(f"Audio initialization failed: {e}")
+        except Exception as e:
+            st.warning(f"Audio system not available: {e}")
         
         # Initialize session state if not already done
         self._init_session_state()
@@ -543,17 +555,25 @@ If ending the conversation, make your response a warm, appropriate farewell.
             response.stream_to_file(tmp_file_path)
             
             try:
-                # Load and play audio using pygame
-                pygame.mixer.music.load(tmp_file_path)
-                pygame.mixer.music.play()
-                
-                # Monitor for interruptions during playback
-                while pygame.mixer.music.get_busy():
-                    if self.interrupt_flag.is_set():
-                        pygame.mixer.music.stop()
-                        st.info("🟡 Interrupted - I'm listening...")
-                        break
-                    time.sleep(0.05)  # Check every 50ms
+                if self.pygame_available:
+                    # Load and play audio using pygame
+                    pygame.mixer.music.load(tmp_file_path)
+                    pygame.mixer.music.play()
+                    
+                    # Monitor for interruptions during playback
+                    while pygame.mixer.music.get_busy():
+                        if self.interrupt_flag.is_set():
+                            pygame.mixer.music.stop()
+                            st.info("🟡 Interrupted - I'm listening...")
+                            break
+                        time.sleep(0.05)  # Check every 50ms
+                else:
+                    # Docker/headless mode - provide audio file download option
+                    st.success("🔊 TTS audio generated successfully")
+                    with open(tmp_file_path, "rb") as audio_file:
+                        audio_bytes = audio_file.read()
+                        st.audio(audio_bytes, format="audio/mp3")
+                    st.info("🎵 Use the audio player above to hear the response")
                     
             finally:
                 # Clean up temporary file
@@ -610,6 +630,21 @@ If ending the conversation, make your response a warm, appropriate farewell.
     def calibrate_silence_threshold(self):
         """Calibrate the silence threshold based on ambient noise"""
         try:
+            # Check if we're in a Docker/headless environment
+            try:
+                # Test if audio input is available
+                test_chunk = sd.rec(
+                    int(0.1 * self.SAMPLE_RATE),
+                    samplerate=self.SAMPLE_RATE,
+                    channels=self.CHANNELS,
+                    dtype=np.float32
+                )
+                sd.wait()
+            except Exception as audio_error:
+                st.warning("🔇 Audio input not available (Docker/headless environment)")
+                st.info("📝 Using default threshold for text-only mode")
+                return 50  # Default threshold for Docker environment
+            
             st.info("🔧 Calibrating microphone... Please stay quiet for 3 seconds")
             
             # Use dynamic calibration parameters
@@ -906,7 +941,15 @@ If ending the conversation, make your response a warm, appropriate farewell.
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🔴 Start Voice Chat", type="primary", use_container_width=True):
+            # Adjust button text based on environment
+            button_text = "🔴 Start Voice Chat" if self.pygame_available else "🔴 Try Voice Chat (Limited)"
+            button_help = None if self.pygame_available else "Voice features may be limited in Docker/headless environment"
+            
+            if st.button(button_text, type="primary", use_container_width=True, help=button_help):
+                if not self.pygame_available:
+                    st.warning("⚠️ Running in Docker/headless mode - voice features may be limited")
+                    st.info("💡 Consider using text input below for full functionality")
+                
                 st.session_state.is_listening = True
                 st.success("🟢 Voice conversation started!")
                 
@@ -914,6 +957,8 @@ If ending the conversation, make your response a warm, appropriate farewell.
                     self.run_conversation_session()
                 except Exception as e:
                     st.error(f"Conversation error: {e}")
+                    if "audio" in str(e).lower() or "alsa" in str(e).lower():
+                        st.info("💡 This appears to be an audio-related error. Try using text input instead.")
                     st.session_state.is_listening = False
                     
         with col2:
@@ -984,6 +1029,13 @@ def main():
     
     # Initialize chatbot
     chatbot = SimpleChatbot()
+    
+    # Show Docker/headless environment notice if applicable
+    if not chatbot.pygame_available:
+        st.info("🐳 **Docker/Headless Mode Detected**\n"
+                "- Voice input may not be available\n"
+                "- TTS audio will be provided via built-in browser player\n"
+                "- Use text input below for full functionality")
     
     # Status indicator with conversation conclusion check
     if st.session_state.get('conversation_concluded', False):
