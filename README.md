@@ -55,27 +55,65 @@ A sophisticated voice-enabled chatbot application built with Streamlit and power
 
 ## 🚦 Getting Started
 
-### Prerequisites
+You can run this application either locally with Python or using Docker for easier deployment.
+
+### 🐳 Docker Deployment (Recommended)
+
+**Prerequisites:**
+- Docker and Docker Compose installed
+- OpenAI API key
+
+**Quick Start:**
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/wasimmajidmalik-oss/streamlit_prototype_v1
+   cd gitpush_folder
+   ```
+
+2. **Set up your OpenAI API key**
+   ```bash
+   # Copy example file
+   cp .env.example .env
+   
+   # Edit .env and add your OpenAI API key
+   # Replace 'your_openai_api_key_here' with your actual key
+   ```
+
+3. **Deploy with one command**
+   ```bash
+   # Linux/Mac
+   ./deploy.sh
+   
+   # Windows
+   deploy.bat
+   
+   # Or manually with Docker Compose
+   docker-compose up --build
+   ```
+
+4. **Access the application**
+   - Open http://localhost:8501 in your browser
+
+📖 **See [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) for detailed Docker deployment instructions**
+
+### 🐍 Local Python Installation
+
+**Prerequisites:**
 - Python 3.9 or higher
 - OpenAI API key
 - Microphone and speakers/headphones
 
-### Installation
+**Installation:**
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/wasimmajidmalik-oss/streamlit_prototype_v1
-   cd streamlit_prototype_v1
+   cd gitpush_folder
    ```
 
 2. **Install dependencies**
    ```bash
    pip install -r requirements.txt
-   ```
-   
-   Or install from the complete modules list:
-   ```bash
-   pip install streamlit openai sounddevice soundfile pygame speech-recognition python-dotenv pandas numpy pillow requests
    ```
 
 3. **Set up environment variables**
@@ -85,7 +123,7 @@ A sophisticated voice-enabled chatbot application built with Streamlit and power
    OPENAI_API_KEY=your_openai_api_key_here
    ```
    
-   ⚠️ **Security Note**: Never commit your `.env` file to version control. The `.gitignore` file is configured to exclude it.
+   ⚠️ **Security Note**: Never commit your `.env` file to version control.
 
 4. **Run the application**
    ```bash
@@ -197,16 +235,50 @@ gitpush_folder/
 
 ## 🚀 Deployment
 
-### Local Development
+### 🐳 Docker Deployment (Production Ready)
+
+**Easy deployment with Docker:**
+```bash
+# Quick start
+./deploy.sh start
+
+# View logs
+./deploy.sh logs
+
+# Stop application
+./deploy.sh stop
+```
+
+**Manual Docker commands:**
+```bash
+# Build and run
+docker-compose up --build -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+```
+
+**Production considerations:**
+- Use reverse proxy (Nginx) for HTTPS
+- Set up proper monitoring and logging
+- Configure resource limits
+- Use Docker secrets for API keys
+- Deploy on cloud platforms (AWS, GCP, Azure)
+
+### 🐍 Local Development
 ```bash
 streamlit run Major_working_code_v3.py
 ```
 
-### Production Deployment
-- Use environment variables for API keys
-- Configure proper audio drivers
-- Set appropriate resource limits
-- Monitor API usage and costs
+### ☁️ Cloud Deployment Options
+- **Google Cloud Run**: One-click deployment with built-in HTTPS
+- **AWS ECS/Fargate**: Scalable container deployment
+- **Azure Container Instances**: Simple container hosting
+- **DigitalOcean App Platform**: Easy Docker deployment
+- **Railway/Render**: Simple deployment with Git integration
 
 ## 🤝 Contributing
 
