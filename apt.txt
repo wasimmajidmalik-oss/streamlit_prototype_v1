@@ -1,2 +1,9 @@
 portaudio19-dev
 libportaudio2
+libasound2-dev
+python3-pyaudio
+alsa-utils
+pulseaudio
+pulseaudio-utils
+ffmpeg
+xvfb

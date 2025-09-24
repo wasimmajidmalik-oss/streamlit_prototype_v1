@@ -1,0 +1,1 @@
+web: chmod +x start_with_audio.sh && ./start_with_audio.sh
