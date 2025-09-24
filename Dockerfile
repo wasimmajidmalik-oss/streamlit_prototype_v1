@@ -34,7 +34,6 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Copy application files
 COPY --chown=app:app Major_working_code_v3.py .
-COPY --chown=app:app README.md .
 COPY --chown=app:app healthcheck.sh .
 
 # Make health check script executable
