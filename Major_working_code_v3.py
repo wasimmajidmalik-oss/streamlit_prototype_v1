@@ -2,33 +2,20 @@ import streamlit as st
 import sounddevice as sd
 import soundfile as sf
 import threading
-import io
 import time
 import json
 import tempfile
 import os
-import subprocess
 from dotenv import load_dotenv
 from datetime import datetime
 import queue
 import numpy as np
 import pygame
 import speech_recognition as sr
-from pydub import AudioSegment
-import asyncio
-import concurrent.futures
 
 # Import OpenAI for ChatGPT integration
-import sys
-import pandas as pd
-from importlib import reload
-import requests
-import numpy as np
 import openai
 from openai import OpenAI
-
-import json
-import pandas as pd
 
 # Load environment variables from .env file
 load_dotenv()
@@ -102,7 +89,7 @@ def show_settings_page():
     st.write("Configure all parameters for your AI chatbot experience")
     
     # Create tabs for different setting categories
-    tab1, tab2, tab3, tab4 = st.tabs(["🤖 AI Settings", "🎤 Audio Settings", "🔊 Voice Settings", "📝 Custom Prompt"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🤖 AI Settings", "🎤 Audio Settings", "🔊 Voice Settings", "📝 Customization"])
     
     with tab1:
         st.header("AI Model Configuration")
@@ -214,6 +201,14 @@ def show_settings_page():
                 help="Choose the AI voice personality"
             )
             
+            st.session_state.tts_speed = st.slider(
+                "Speech Speed",
+                min_value=0.25, max_value=4.0,
+                value=st.session_state.get('tts_speed', 1.0),
+                step=0.05,
+                help="Speech speed: 0.25 = very slow, 1.0 = normal, 4.0 = very fast"
+            )
+            
         with col2:
             st.subheader("Speech Recognition")
             st.session_state.whisper_model = st.selectbox(
@@ -254,6 +249,22 @@ Consider ending the conversation when:
 - User indicates they are done or have no more questions
 - The task or question has been fully completed and user seems content"""
             st.rerun()
+            
+        st.markdown("---")
+        
+        st.header("Custom Welcome Message")
+        st.write("Customize the greeting message that starts each conversation")
+        
+        st.session_state.custom_welcome_message = st.text_area(
+            "Welcome Message",
+            value=st.session_state.get('custom_welcome_message', 'Hello! I\'m your AI assistant powered by OpenAI. How can I help you today?'),
+            height=100,
+            help="This message will be spoken and displayed when starting a new conversation"
+        )
+        
+        if st.button("🔄 Reset to Default Welcome Message"):
+            st.session_state.custom_welcome_message = "Hello! I'm your AI assistant powered by OpenAI. How can I help you today?"
+            st.rerun()
     
     # Settings actions
     st.header("Settings Management")
@@ -270,7 +281,8 @@ Consider ending the conversation when:
                 'ai_temperature', 'ai_max_tokens', 'ai_top_p', 'ai_model',
                 'audio_sample_rate', 'silence_duration_to_stop', 'max_recording_time',
                 'min_recording_time', 'calibration_duration', 'chunk_duration',
-                'tts_model', 'tts_voice', 'whisper_model', 'whisper_language', 'custom_system_prompt'
+                'tts_model', 'tts_voice', 'tts_speed', 'whisper_model', 'whisper_language', 
+                'custom_system_prompt', 'custom_welcome_message'
             ]
             for key in settings_keys:
                 if key in st.session_state:
@@ -305,12 +317,18 @@ Consider ending the conversation when:
             st.write("**Voice Settings:**")
             st.write(f"- TTS Model: {st.session_state.get('tts_model', 'tts-1')}")
             st.write(f"- Voice: {st.session_state.get('tts_voice', 'alloy')}")
+            st.write(f"- Speech Speed: {st.session_state.get('tts_speed', 1.0)}x")
             st.write(f"- Language: {st.session_state.get('whisper_language', 'en')}")
             
             st.write("**Other Settings:**")
             st.write(f"- Min Recording: {st.session_state.get('min_recording_time', 1.0)}s")
             st.write(f"- Calibration: {st.session_state.get('calibration_duration', 3.0)}s")
             st.write(f"- Chunk Duration: {st.session_state.get('chunk_duration', 0.2)}s")
+            
+            welcome_preview = st.session_state.get('custom_welcome_message', 'Hello! I\'m your AI assistant...')[:50]
+            if len(st.session_state.get('custom_welcome_message', '')) > 50:
+                welcome_preview += "..."
+            st.write(f"- Welcome Message: {welcome_preview}")
 
 class SimpleChatbot:
     def __init__(self):
@@ -384,6 +402,8 @@ class SimpleChatbot:
             st.session_state.tts_model = "tts-1"
         if 'tts_voice' not in st.session_state:
             st.session_state.tts_voice = "alloy"
+        if 'tts_speed' not in st.session_state:
+            st.session_state.tts_speed = 1.0
         
         # Whisper Parameters
         if 'whisper_model' not in st.session_state:
@@ -404,6 +424,11 @@ Consider ending the conversation when:
 - The conversation has reached a natural conclusion
 - User indicates they are done or have no more questions
 - The task or question has been fully completed and user seems content"""
+        
+        # Custom Welcome Message
+        if 'custom_welcome_message' not in st.session_state:
+            st.session_state.custom_welcome_message = "Hello! I'm your AI assistant powered by OpenAI. How can I help you today?"
+            
         if 'microphone_calibrated' not in st.session_state:
             st.session_state.microphone_calibrated = False
         if 'silence_threshold' not in st.session_state:
@@ -501,11 +526,13 @@ If ending the conversation, make your response a warm, appropriate farewell.
             # Call OpenAI TTS API with dynamic parameters
             tts_model = st.session_state.get('tts_model', 'tts-1')
             tts_voice = st.session_state.get('tts_voice', 'alloy')
+            tts_speed = st.session_state.get('tts_speed', 1.0)
             
             response = client.audio.speech.create(
                 model=tts_model,  # Dynamic model
                 voice=tts_voice,  # Dynamic voice
-                input=clean_text
+                input=clean_text,
+                speed=tts_speed  # Dynamic speech speed
             )
             
             # Save audio to temporary file
@@ -536,93 +563,9 @@ If ending the conversation, make your response a warm, appropriate farewell.
                     pass
                 
         except Exception as e:
-            # Fallback to Windows SAPI TTS if OpenAI TTS fails
-            try:
-                st.warning("OpenAI TTS failed, using Windows speech synthesis...")
-                
-                # Use Windows SAPI for TTS
-                import win32com.client
-                import pythoncom
-                
-                # Initialize COM for the current thread
-                pythoncom.CoInitialize()
-                
-                try:
-                    speaker = win32com.client.Dispatch("SAPI.SpVoice")
-                    # Set speech rate (0-10, default is 0)
-                    speaker.Rate = 2
-                    
-                    # Start speaking in a separate thread to allow interruption
-                    import threading
-                    
-                    def speak_text():
-                        try:
-                            # Initialize COM in the thread
-                            pythoncom.CoInitialize()
-                            speaker = win32com.client.Dispatch("SAPI.SpVoice")
-                            speaker.Rate = 2
-                            speaker.Speak(clean_text)
-                        except Exception as thread_error:
-                            print(f"Thread TTS error: {thread_error}")
-                        finally:
-                            pythoncom.CoUninitialize()
-                    
-                    self.tts_thread = threading.Thread(target=speak_text)
-                    self.tts_thread.start()
-                    
-                    # Monitor for interruptions during speech
-                    while self.tts_thread.is_alive():
-                        if self.interrupt_flag.is_set():
-                            # Stop the speech by creating new speaker instance
-                            try:
-                                stop_speaker = win32com.client.Dispatch("SAPI.SpVoice")
-                                stop_speaker.Speak("", 3)  # SVSFPurgeBeforeSpeak flag
-                            except:
-                                pass
-                            st.info("🟡 Interrupted - I'm listening...")
-                            break
-                        time.sleep(0.05)  # Check every 50ms
-                        
-                finally:
-                    pythoncom.CoUninitialize()
-                    
-            except ImportError:
-                # If win32com is not available, try pyttsx3 as alternative
-                try:
-                    import pyttsx3
-                    st.warning("Using pyttsx3 for text-to-speech...")
-                    
-                    engine = pyttsx3.init()
-                    engine.setProperty('rate', 180)
-                    
-                    def speak_text():
-                        try:
-                            engine.say(clean_text)
-                            engine.runAndWait()
-                        except Exception as tts_error:
-                            print(f"pyttsx3 error: {tts_error}")
-                    
-                    self.tts_thread = threading.Thread(target=speak_text)
-                    self.tts_thread.start()
-                    
-                    # Monitor for interruptions
-                    while self.tts_thread.is_alive():
-                        if self.interrupt_flag.is_set():
-                            try:
-                                engine.stop()
-                            except:
-                                pass
-                            st.info("🟡 Interrupted - I'm listening...")
-                            break
-                        time.sleep(0.05)
-                        
-                except ImportError as pyttsx3_error:
-                    st.error(f"No Windows TTS available. Install pywin32 or pyttsx3: {pyttsx3_error}")
-                except Exception as pyttsx3_error:
-                    st.error(f"pyttsx3 TTS failed: {pyttsx3_error}")
-                    
-            except Exception as fallback_error:
-                st.error(f"All speech synthesis methods failed: {e}, {fallback_error}")
+            # OpenAI TTS failed - show error and continue without voice output
+            st.error(f"⚠️ Text-to-speech failed: {e}")
+            st.info("� Response will be shown as text only. Please check your OpenAI API key and connection.")
 
     def speech_to_text_openai(self, audio_file_path):
         """Speech recognition using OpenAI Whisper API"""
@@ -883,8 +826,8 @@ If ending the conversation, make your response a warm, appropriate farewell.
 
     def run_conversation_session(self):
         """Run the conversation session"""
-        # Welcome message
-        welcome_msg = "Hello! I'm your AI assistant powered by OpenAI. How can I help you today?"
+        # Welcome message - use custom welcome message from settings
+        welcome_msg = st.session_state.get('custom_welcome_message', "Hello! I'm your AI assistant powered by OpenAI. How can I help you today?")
         st.session_state.chat_history.append({
             "role": "assistant",
             "content": welcome_msg,
@@ -1031,12 +974,13 @@ def main():
     model = st.session_state.get('ai_model', 'gpt-3.5-turbo')
     tts_model = st.session_state.get('tts_model', 'tts-1')
     tts_voice = st.session_state.get('tts_voice', 'alloy')
+    tts_speed = st.session_state.get('tts_speed', 1.0)
     whisper_model = st.session_state.get('whisper_model', 'whisper-1')
     
     st.info(f"🔧 **Current Configuration:**\n"
             f"- **Chat:** {model}\n"
             f"- **Speech Recognition:** {whisper_model}\n" 
-            f"- **Text-to-Speech:** {tts_model} ({tts_voice} voice)")
+            f"- **Text-to-Speech:** {tts_model} ({tts_voice} voice, {tts_speed}x speed)")
     
     # Initialize chatbot
     chatbot = SimpleChatbot()
